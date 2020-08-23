@@ -1,9 +1,7 @@
 package org.gamjee.stompClient.libs
 
-import org.gamjee.stompClient.interfaces.StompSession
-import org.gamjee.stompClient.interfaces.StompSessionListener
-import org.gamjee.stompClient.interfaces.StompSocketListener
-import org.gamjee.stompClient.interfaces.StompWebSocket
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.gamjee.stompClient.interfaces.*
 import java.util.*
 import java.util.logging.Logger
 
@@ -22,14 +20,24 @@ class StompSessionImpl private constructor(
             }
         }
 
-        override fun onMessage(text: StompMessage) {
-            if(text.command == Command.CONNECTED)  {
+        override fun onMessage(message: StompMessage) {
+            if(message.command == Command.CONNECTED)  {
                 setSessionState(SessionState.CONNECTED)
+                return
             }
 
-            if(text.command == Command.DISCONNECT)  {
+            if(message.command == Command.DISCONNECT)  {
                 socket.disconnect()
                 setSessionState(SessionState.DISCONNECTED)
+                return
+            }
+
+            listeners.forEach {
+                val type = it.value.getPayloadType()
+                val mapper = ObjectMapper()
+                val payload = mapper.readValue(message.body, type)
+
+                it.value.onMessage(payload, message.headers)
             }
         }
     }
@@ -43,9 +51,11 @@ class StompSessionImpl private constructor(
         var subscriptionsCount = 0
         var transactionsCount = 0
         var receiptCount = 0
+        val listeners = mutableMapOf<String, StompFrameHandler>()
         fun init(
                 stompWebSocket: StompWebSocket
         ) : StompSession {
+
             return StompSessionImpl(stompWebSocket)
         }
     }
@@ -75,11 +85,11 @@ class StompSessionImpl private constructor(
         this.sessionListener = listener
     }
 
-    override fun subscribe(destination: String) : String {
-        return this.subscribe(destination, StompAck.AUTO)
+    override fun subscribe(destination: String, listener: StompFrameHandler) : String {
+        return this.subscribe(destination, listener, StompAck.AUTO)
     }
 
-    override fun subscribe(destination: String, ack: StompAck) : String {
+    override fun subscribe(destination: String, listener: StompFrameHandler, ack: StompAck) : String {
         val id = getNextSubscriptionId()
         val frame = MessageFrameImpl
                 .Builder()
@@ -90,17 +100,20 @@ class StompSessionImpl private constructor(
                 .build()
         socket.send(frame)
 
+        listeners[id] = listener
 
         return id
     }
 
     override fun unsubscribe(subscriptionId: String) {
+        listeners.remove(subscriptionId)
         val frame = MessageFrameImpl
                 .Builder()
                 .addCommand(Command.UNSUBSCRIBE)
                 .addHeader("id", subscriptionId)
                 .build()
         socket.send(frame)
+
     }
 
     override fun begin(): String {

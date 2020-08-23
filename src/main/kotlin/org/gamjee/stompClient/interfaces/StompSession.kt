@@ -9,8 +9,8 @@ interface StompSession {
     fun send(destination: String, message: String);
     fun setStateChangeListener(listener: StompSessionListener) { };
     fun getState(): SessionState? { return null }
-    fun subscribe(destination: String) : String;
-    fun subscribe(destination: String, ack: StompAck) : String;
+    fun subscribe(destination: String, listener: StompFrameHandler) : String;
+    fun subscribe(destination: String, listener: StompFrameHandler, ack: StompAck) : String;
     fun unsubscribe(subscriptionId: String);
     fun begin(): String;
     fun commit(transactionId: String);
