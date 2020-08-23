@@ -1,6 +1,7 @@
 package org.gamjee.stompClient.libs
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.gamjee.stompClient.interfaces.*
 import java.util.*
 import java.util.logging.Logger
@@ -34,7 +35,7 @@ class StompSessionImpl private constructor(
 
             listeners.forEach {
                 val type = it.value.getPayloadType()
-                val mapper = ObjectMapper()
+                val mapper = jacksonObjectMapper()
                 val payload = mapper.readValue(message.body, type)
 
                 it.value.onMessage(payload, message.headers)

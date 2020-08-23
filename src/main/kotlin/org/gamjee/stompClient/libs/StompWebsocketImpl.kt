@@ -31,7 +31,7 @@ class StompWebsocketImpl private constructor(
             super.onFailure(webSocket, t, response)
 
             setSocketState(SocketState.CONNECT_ERROR)
-            logger.info("Web socket opening failed: ${t.message}")
+            logger.info(t.message)
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
